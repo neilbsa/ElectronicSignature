@@ -1,0 +1,306 @@
+﻿@model Document
+<h2>Create Envelope</h2>
+
+
+<form asp-action="Create" method="post" enctype="multipart/form-data" id="envelopCreateForm">
+    <br />
+    <br />
+    <br />
+
+    <h5> Main File:</h5>
+    <input type="file" accept="application/pdf" asp-for="uploadedFile" />
+    <hr />
+
+    <br />
+
+
+
+
+    <div class="form-group">
+        <label for="textRemarks">Remarks</label>
+        <textarea asp-for="Remarks" class="form-control" id="textRemarks" rows="3"></textarea>
+    </div>
+    <br />
+    <br />
+    <h5>Supporting Documents</h5>
+    <p style="color:red;font-size:10px;">NOTE: Can upload multiple files in the time</p>
+    <div class="row">
+        <div class="col-md-6 col-lg-6">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>
+                            Files
+                        </th>
+                        <th>
+
+                        </th>
+                    </tr>
+                    <tr>
+
+                        <td>
+                            <input type="file" accept="image/*,application/pdf" id="supportingDocumentsFiles" multiple asp-for="SupportingDocsForUpload">
+                        </td>
+                        <td></td>
+                    </tr>
+
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+
+    <div class="row">
+        <div class="col-md-6 col-lg-6">
+            <table class="table table-hover" id="supportingDocumentRows">
+                <thead>
+                    <tr>
+                        <th>
+                            Filename
+                        </th>
+                        <th>
+                            Filesize
+                        </th>
+                        <th>
+                            FileType
+                        </th>
+                    </tr>
+
+
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+
+        </div>
+    </div>
+
+    <br />
+    <br />
+    <br />
+    <br />
+
+    <h5>Signatories</h5>
+
+    <p style="color:red;font-size:10px;">NOTE: Please input correct signatory name and email address</p>
+
+    <input type="checkbox" id="inOrderSending" asp-for="IsScheduledDelivery" />In Order Sending ?
+
+    <div class="row">
+        <div class="col-md-6 col-lg-6">
+            <table class="table table-hover" id="signatoriesRow">
+                <thead>
+                    <tr>
+                        <th>
+                            Order #
+                        </th>
+                        <th>
+                            Email
+                        </th>
+                        <th>
+
+                            Fullname
+                        </th>
+                        <th>
+
+                        </th>
+                    </tr>
+
+
+                </thead>
+                <tbody>
+                </tbody>
+            </table>
+            <button type="button" id="btnAddSignatories" class="btn btn-success">Add Signatories</button>
+        </div>
+    </div>
+    <br />
+    @*<input type="checkbox" asp-for="SendNotification" />Enable Autosend ?*@
+    <br />
+    <br />
+    <button type="submit" id="submitCreateEnvelope" class="btn btn-info">Save</button>
+</form>
+
+
+
+@section scripts
+{
+    <script>
+
+        $(document).ready(function () {
+
+
+            $("#inOrderSending").on("change", function () {
+           
+
+                      createSignatoryIndex()   
+
+
+            })
+       
+
+            function GenerateSupportingDocBody(item) {
+                  var itemFileName = item.name;
+                  var itemSize = item.size / 1000;
+                  var itemType = item.type;
+
+
+                return `
+                      <tr>
+                                    <td>
+                                        `+  itemFileName +`
+                                    </td>
+                                    <td>
+                                        `+ itemSize +`
+                                    </td>
+                                    <td>
+                                        `+ itemType +`
+                                    </td>
+                    </tr>
+                          
+                        `;
+
+
+            }
+
+
+
+            function createSignatoryIndex() {
+                  var isInOrder = $("#inOrderSending").is(':checked');
+                        var onOrderitemList = $(".orderNumberItem");
+                        
+                        console.log(isInOrder)
+
+                if (isInOrder) {
+                    onOrderitemList.each(function (dom) {
+                        var cuDom = onOrderitemList[dom];
+                        var currentIndex = dom + 1;
+                        var currentdom = $(cuDom)
+                        currentdom.prop("disabled", false)
+
+
+
+                        if (currentdom.val().length <= 0) {
+                            currentdom.val(currentIndex);
+                        }
+
+                    })
+
+
+                } else {
+                      onOrderitemList.each(function (dom) {
+                        var cuDom = onOrderitemList[dom];
+                    
+                        var currentdom = $(cuDom)
+                        currentdom.prop("disabled",true)
+
+                          currentdom.val(1);
+
+
+                    })
+                }
+            }
+
+
+
+
+            $("#supportingDocumentsFiles").on("change", function () {
+                var dom = $(this);
+                var filesTableBody = $("#supportingDocumentRows > tbody");
+                var currentFile = dom[0].files;
+                var rowCount = filesTableBody.find("tr");
+
+
+
+                console.log(rowCount);
+
+                if (rowCount.length > 0) {
+                                var i;
+                    for (i = 0; i < rowCount.length; i++) {
+
+                 
+                        var currentItem = rowCount[i];
+             
+                       
+                        
+                                              currentItem.remove();
+                            }
+                }
+             
+          
+                if (currentFile.length > 0) {
+
+                    
+
+                            var i;
+                    for (i = 0; i < currentFile.length; i++) {
+
+                 
+                        var currentItem = currentFile[i];
+             
+                        var currentHtmlBody = GenerateSupportingDocBody(currentItem);
+                        
+                                              filesTableBody.append(currentHtmlBody);
+                            }
+
+
+                }
+                 
+             
+
+
+           
+               
+
+                console.log(dom);
+            })
+
+                $("#btnAddSignatories").on("click", function () {
+                var tableDom = $("#signatoriesRow > tbody");
+                var opt = {
+                    url: "/Home/AddNewSignatories",
+                    success: function (html) {
+                        tableDom.append(html);
+
+
+                       createSignatoryIndex()                         
+
+
+
+
+                    }
+                }
+                $.ajax(opt);
+
+                })
+
+
+
+
+
+            $("#signatoriesRow").on("click",".deleteSignatory", function () {
+
+                var dom = $(this);
+                var parentDom = dom.parent().parent();
+            
+                parentDom.remove();
+         
+            })
+
+
+        })
+
+        
+
+
+ 
+
+    </script>
+
+
+ 
+
+}

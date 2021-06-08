@@ -1,0 +1,33 @@
+﻿@model List<DocumentElementCoordinates>
+
+
+@{
+    Layout = null;
+}
+
+
+@if (Model != null)
+{
+    foreach (var item in Model)
+    {
+        if (item.ElementType == "Signature" && item.base64signature == null)
+        {
+
+        }
+        else
+        {
+            if (ViewBag.CurrentUser.ToLower() == item.SignatoryDetails.EmailAddress.ToLower() && item.SignatoryDetails.Status != "Signed")
+            {
+
+                <partial name="SignatureElementForUpdateWithSignaOwn" model="item" />
+            }
+            else
+            {
+
+                <partial name="SignatureElementForUpdateWithSigna" model="item" />
+            }
+
+
+        }
+    }
+}

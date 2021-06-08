@@ -1,0 +1,350 @@
+﻿@model Document
+
+<h1>Document Detail</h1>
+<div class="modal fade" id="loadingModal" tabindex="-1" data-keyboard="false" data-backdrop="static" role="dialog" aria-labelledby="loadingModal-label">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+
+            <div class="modal-body">
+                <h4 class="modal-title" id="loadingModal-label">Sending Please wait</h4>
+            </div>
+
+        </div>
+    </div>
+</div>
+<div class="text-center">
+    <button id="prev" class="btn btn-lg btn-info">Previous</button>
+    <button id="next" class="btn btn-lg btn-info">Next</button>
+    &nbsp; &nbsp;
+    <span>Page: <span id="page_num"></span> / <span id="page_count"></span></span>
+</div>
+<input type="hidden" asp-for="Id" id="documentId" />
+
+<input type="hidden" id="isAutoSend" value="@(ViewBag.IsAutoSend)">
+<div class="row">
+    <div class="col-xs-4 col-sm-4 col-md-4 col-lg-4">
+
+        <h4>Signatory</h4>
+        <div class="list-group">
+            <select id="selectedSignatoryId" asp-items="@ViewBag.signatories" class="custom-select list-group-item custom-select-lg mb-3">
+            </select>
+
+
+        </div>
+
+        <h4>Supporting Docs</h4>
+        @if (Model.SupportingDocuments != null && Model.SupportingDocuments.Count() > 0)
+        {
+
+            <div class="list-group">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>
+                                FileName
+                            </th>
+                            <th>
+                                Size(kb)
+                            </th>
+                            <th>
+                                Action
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.SupportingDocuments)
+                        {
+                            <tr>
+                                <th style="max-width:100px;word-wrap: break-word;">
+                                    @item.Filename
+                                </th>
+                                <th>
+                                    @(item.ContentSize / 1000)
+                                </th>
+                                <th>
+                                    <a asp-action="ViewFileRepository" asp-route-Id="@item.Id" class="viewSupportFile btn btn-success">View</a> |
+                                    <a asp-action="DownloadFileRepository" asp-route-Id="@item.Id" class="btn btn-success">Download</a>
+                                </th>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+
+
+
+    </div>
+    <div class="col-xs-8 col-sm-8 col-md-8 col-lg-8">
+        <div id="mainPdfDiv">
+
+
+
+            <canvas data-documentid="@ViewBag.DocumentId" id="the-canvas">
+            </canvas>
+
+
+            <div id="canvasCover">
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+
+
+@section scripts {
+
+    <script src="//mozilla.github.io/pdf.js/build/pdf.js"></script>
+    <script>
+        var pdfjsLib = window['pdfjs-dist/build/pdf'];
+
+        // The workerSrc property shall be specified.
+        pdfjsLib.GlobalWorkerOptions.workerSrc = '//mozilla.github.io/pdf.js/build/pdf.worker.js';
+    </script>
+    <script>
+        $(document).ready(function () {
+             var localcanvas = $("#the-canvas");
+            // Loaded via <script> tag, create shortcut to access PDF.js exports.
+
+            var url = '@Url.Content("~/Files/PDF/")' + localcanvas.data("documentid");
+
+
+            var pdfDoc = null,
+                pageNum = 1,
+                pageRendering = false,
+                pageNumPending = null,
+                scale = 1.3;
+
+
+            var canvas = $('#the-canvas').get(0);
+            var pageNumDom = $("#page_num");
+            var ctx = canvas.getContext('2d');
+
+            function queueRenderPage(num) {
+                if (pageRendering) {
+                    pageNumPending = num;
+                } else {
+                    renderPage(num);
+                }
+            }
+
+
+
+            AutoSend();
+            function AutoSend() {
+                var dom = $("#isAutoSend");
+                var domVal = (dom.val() === 'true');
+                var idDom = $("#documentId");
+                var id = idDom.val();
+                 var pageModal = $("#loadingModal");
+                console.log(dom.val());
+                     console.log(domVal);
+                console.log(idDom)
+                     console.log(id)
+                if (domVal) {
+                    console.log("true")
+
+             pageModal.modal({
+                backdrop: 'static',
+                keyboard: false
+             });
+
+                      dom.val('false');
+                    var opt = {
+                        url: "/Home/SendEmailNotification",
+                        data: { Id: id },
+                        method: "GET",
+                        success: function () {
+                          pageModal.modal("toggle");
+                       
+                          
+
+                        } ,error: function (data) {
+                    pageModal.modal("toggle");
+                           
+                    alert(data.responseText);
+                }
+
+
+
+                    }
+
+
+                    $.ajax(opt);
+
+                } else {
+                   console.log("false")
+                }
+            }
+
+
+
+
+            $("#prev").on("click", function() {
+                if (pageNum <= 1) {
+                    return;
+                }
+                pageNum--;
+                queueRenderPage(pageNum);
+            })
+            $("#next").on("click", function (){
+                if (pageNum >= pdfDoc.numPages) {
+                    return;
+                }
+                pageNum++;
+                queueRenderPage(pageNum);
+            });
+
+
+
+            $("#selectedSignatoryId").on("change", function () {
+                renderExistingCoordinates();
+            })
+
+
+
+            $(".viewSupportFile").on("click", function (evt) {
+
+                evt.preventDefault();
+                var dom = $(this);
+                var url = dom.attr('href');
+                window.open(url, 'window name', 'window settings');
+
+            })
+
+            function renderExistingCoordinates() {
+                var pageNumber = $("#page_num");
+                var documentId = $("#documentId");
+                var signatoryId = $("#selectedSignatoryId");
+                var cover = $("#canvasCover");
+
+                cover.children().each(function () {
+                    var childdom = $(this);
+                    childdom.remove()
+                });
+
+
+                var opt = {
+                    url: "/Home/GetExistingelementCoordinates",
+                    dataType: "HTML",
+                    data: { DocumentId: documentId.val(), PageNumber: pageNumber.text(), SignatoryId: signatoryId.val() },
+                    success: function (data) {
+                        cover.append(data);
+
+                        if (cover.children().length > 0) {
+
+                                var coverChildren = cover.children();
+                                 coverChildren.each(function () {
+                                        var currentDom = $(this);
+
+                                         var form = currentDom.find("form");
+                                         var pageXform = form.find(".elemPageX");
+                                         var pageYform = form.find(".elemPageY");
+
+                                            pdfDoc.getPage(parseFloat(pageNumber.text())).then(function (page) {
+                                              var viewport = page.getViewport({ scale: scale });
+                                                var pts = viewport.convertToViewportPoint(pageXform.val(), pageYform.val());
+                                                    console.log(currentDom)
+
+                                              currentDom.css("left", pts[0]);
+                                              currentDom.css("top", pts[1] + 25);
+                                            });
+
+                                    })
+                        }
+                    }
+                }
+
+
+                $.ajax(opt);
+            }
+
+
+            function renderPage(num) {
+
+
+               var cover = $("#canvasCover");
+
+                cover.children().each(function () {
+                    var childdom = $(this);
+                    childdom.remove()
+                });
+                pageRendering = true;
+                // Using promise to fetch the page
+                pdfDoc.getPage(num).then(function (page) {
+                    var viewport = page.getViewport({ scale: scale });
+
+
+                    // var viewport = page.view;
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+
+                    // Render PDF page into canvas context
+                    var renderContext = {
+                        canvasContext: ctx,
+                        viewport: viewport
+                    };
+                    var renderTask = page.render(renderContext);
+
+                    // Wait for rendering to finish
+                    renderTask.promise.then(function () {
+                        pageRendering = false;
+
+
+                        if (pageNumPending !== null) {
+                            // New page rendering is pending
+                            renderPage(pageNumPending);
+
+                            pageNumPending = null;
+                        }
+
+
+                       var canvasCoverDomForRevision = $("#canvasCover");
+                        canvasCoverDomForRevision.width(viewport.width).height(viewport.height);
+                        $("body").height(viewport.height + canvasCoverDomForRevision.offset().top);
+                       renderExistingCoordinates();
+                    });
+                });
+
+
+
+                pageNumDom.text(num);
+            }
+
+
+
+
+
+
+
+            pdfjsLib.getDocument(url).promise.then(function (pdfDoc_) {
+                pdfDoc = pdfDoc_;
+                document.getElementById('page_count').textContent = pdfDoc.numPages;
+                // Initial/first page rendering
+                renderPage(pageNum);
+            });
+
+
+
+
+        });
+    </script>
+
+
+}

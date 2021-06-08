@@ -1,0 +1,713 @@
+﻿@model Document
+
+<h1>Update Signature</h1>
+
+
+<div class="modal fade" id="loadingModal" tabindex="-1" data-keyboard="false" data-backdrop="static" role="dialog" aria-labelledby="loadingModal-label">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+
+            <div class="modal-body">
+                <h4 class="modal-title" id="loadingModal-label">Please wait</h4>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+
+<div class="modal" id="signatureModal" tabindex="-1" role="dialog" aria-labelledby="myModal-label">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            @*<div class="modal-header">
+                <h4 class="modal-title" id="myModal-label">Signature Templates</h4>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+
+            </div>*@
+            <div class="modal-body" >
+                <div class="row">
+                    <form asp-action="UpdateGatheredSignature" method="post" asp-controller="Home" id="modalSignatureForm">
+                        <input type="hidden" name="currentTransaction" id="currentTransaction" />
+                        <input type="hidden" name="dataUrlString" id="dataUrlString" />
+                    </form>
+
+
+                    <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+                        <div class="bs-example">
+                            <ul class="nav nav-tabs">
+                                <li class="nav-item">
+                                    <a href="#drawSignature" id="drawSignaturePad" class="nav-link active" data-toggle="tab">Draw Signature</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a href="#signatureHistory" class="nav-link" data-toggle="tab">Signature history</a>
+                                </li>
+
+                            </ul>
+                            <div class="tab-content">
+                                <div class="tab-pane fade show active" id="drawSignature">
+                                    <canvas width="500" height="100" id="the-signa-canvas">
+                                    </canvas>
+                                </div>
+                                <div class="tab-pane fade" id="signatureHistory" style="max-height:175px; overflow: scroll; overflow-x: hidden;">
+                                    <ul class="list-group signatureTemplateList" id="signatureList">
+
+                                        @if ((ViewBag.SignatureTemplates as List<string>) != null && (ViewBag.SignatureTemplates as List<string>).Count() > 0)
+                                        {
+                                            foreach (var item in (ViewBag.SignatureTemplates as List<string>))
+                                            {
+                                                <li data-stringimage="@item" class="list-group-item signatureTemplateItem"><img src="@item" /></li>
+
+                                            }
+                                        }
+
+                                    </ul>
+                                
+                                
+                                
+                                </div>
+
+                            </div>
+                        </div>
+                    </div>
+             
+
+
+
+
+
+
+
+                </div>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" id="saveSignature" class="btn btn-primary">Render</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<div class="text-center">
+    <button id="prev" class="btn btn-lg btn-info">Previous</button>
+    <button id="next" class="btn btn-lg btn-info">Next</button>
+    &nbsp; &nbsp;
+    <span>Page: <span id="page_num"></span> / <span id="page_count"></span></span>
+</div>
+<input type="hidden" asp-for="Id" id="documentId" />
+<input type="hidden" id="selectedSignatoryId" value="@ViewBag.SignatoryId" />
+<div class="row">
+    <div class="col-xs-4 col-sm-4 col-md-4 col-lg-4">
+
+        <h4>Signatory</h4>
+        <div class="list-group">
+            @ViewBag.SignatoryName
+        </div>
+        <h4>Supporting Docs</h4>
+        @if (Model.SupportingDocuments != null && Model.SupportingDocuments.Count() > 0)
+        {
+
+            <div class="list-group">
+                <table class="table table-bordered table-hover">
+                    <thead>
+                        <tr>
+                            <th>
+                                FileName
+                            </th>
+                            <th>
+                                Size(kb)
+                            </th>
+                            <th>
+                                Action
+                            </th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var item in Model.SupportingDocuments)
+                        {
+                            <tr>
+                                <th style="max-width:100px;word-wrap: break-word;">
+                                    @item.Filename
+                                </th>
+                                <th>
+                                    @(item.ContentSize / 1000)
+                                </th>
+                                <th>
+                                    <a asp-action="ViewFileRepository" asp-route-Id="@item.Id" class="viewSupportFile btn btn-success">View</a> |
+                                    <a asp-action="DownloadFileRepository" asp-route-Id="@item.Id" class="btn btn-info">Download</a>
+                                </th>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+
+
+
+
+
+
+
+
+
+        }
+
+
+
+
+        <h4>Actions</h4>
+        <div class="list-group">
+            @if (Model.Status != "Signed")
+            {
+                <a asp-action="UpdateSignatoryStatus" id="postSignature" class="btn btn-danger" data-transactionid="@Model.Id" asp-route-Id="@Model.Id">Post Signatures</a>
+            }
+
+
+        </div>
+    </div>
+    <div class="col-xs-8 col-sm-8 col-md-8 col-lg-8">
+        <div id="mainPdfDiv">
+
+
+
+            <canvas data-documentid="@ViewBag.DocumentId" id="the-canvas">
+            </canvas>
+
+
+            <div id="canvasCover" class="updateCanvasCover">
+
+            </div>
+        </div>
+
+    </div>
+</div>
+
+
+
+
+@section scripts {
+    <script src="~/lib/pdfjs/pdf.min.js"></script>
+
+    <script src="//mozilla.github.io/pdf.js/build/pdf.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/signature_pad@2.3.2/dist/signature_pad.min.js"></script>
+    <script>
+        $(document).ready(function () {
+             var localcanvas = $("#the-canvas");
+            var pdfjsLib = window['pdfjs-dist/build/pdf'];
+            pdfjsLib.GlobalWorkerOptions.workerSrc = '//mozilla.github.io/pdf.js/build/pdf.worker.js';
+           // pdfjsLib.GlobalWorkerOptions.workerSrc = '@Url.Content("~/lib/pdfjs/pdf.worker.js")';
+            var url = '@Url.Content("~/Files/PDF/")' + localcanvas.data("documentid");
+            var pdfDoc = null,
+                pageNum = 1,
+                pageRendering = false,
+                pageNumPending = null,
+                fromSignatureHistory=false,
+                scale = 1.3;
+
+
+            var loadingmodal = $("#loadingModal");
+            
+            var canvas = $("#the-signa-canvas").get(0);
+
+            var signaturePad = new SignaturePad(canvas);
+
+
+            $("#signatureList").on("click", ".signatureTemplateItem", function () {
+                var dom = $(this);
+                var domData = dom.data("stringimage");
+                signaturePad.clear();
+                signaturePad.fromDataURL(domData);
+                fromSignatureHistory = true;
+                $("#drawSignaturePad").click();
+
+            })
+
+            function addNewSignatureToHistory(item) {
+                var ListOfSigna = $("#signatureList");
+
+
+                var htmlStr = "<li data-stringimage='" + item + "' class='list-group-item signatureTemplateItem'><img src='" + item + "' /></li>";
+
+
+
+
+                ListOfSigna.prepend(htmlStr);
+            }
+
+
+
+
+
+            $("#signatureModal").on('shown.bs.modal', function () {
+               signaturePad.clear();
+            });
+            $("#signatureModal").on('hidden.bs.modal', function () {
+                var defaultData = `data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAfQAAABkCAYAAABwx8J9AAAERklEQVR4Xu3VAQ0AAAjDMPBvGh0sxcF7ku84AgQIECBA4L3Avk8gAAECBAgQIDAG3RMQIECAAIGAgEEPlCgCAQIECBAw6H6AAAECBAgEBAx6oEQRCBAgQICAQfcDBAgQIEAgIGDQAyWKQIAAAQIEDLofIECAAAECAQGDHihRBAIECBAgYND9AAECBAgQCAgY9ECJIhAgQIAAAYPuBwgQIECAQEDAoAdKFIEAAQIECBh0P0CAAAECBAICBj1QoggECBAgQMCg+wECBAgQIBAQMOiBEkUgQIAAAQIG3Q8QIECAAIGAgEEPlCgCAQIECBAw6H6AAAECBAgEBAx6oEQRCBAgQICAQfcDBAgQIEAgIGDQAyWKQIAAAQIEDLofIECAAAECAQGDHihRBAIECBAgYND9AAECBAgQCAgY9ECJIhAgQIAAAYPuBwgQIECAQEDAoAdKFIEAAQIECBh0P0CAAAECBAICBj1QoggECBAgQMCg+wECBAgQIBAQMOiBEkUgQIAAAQIG3Q8QIECAAIGAgEEPlCgCAQIECBAw6H6AAAECBAgEBAx6oEQRCBAgQICAQfcDBAgQIEAgIGDQAyWKQIAAAQIEDLofIECAAAECAQGDHihRBAIECBAgYND9AAECBAgQCAgY9ECJIhAgQIAAAYPuBwgQIECAQEDAoAdKFIEAAQIECBh0P0CAAAECBAICBj1QoggECBAgQMCg+wECBAgQIBAQMOiBEkUgQIAAAQIG3Q8QIECAAIGAgEEPlCgCAQIECBAw6H6AAAECBAgEBAx6oEQRCBAgQICAQfcDBAgQIEAgIGDQAyWKQIAAAQIEDLofIECAAAECAQGDHihRBAIECBAgYND9AAECBAgQCAgY9ECJIhAgQIAAAYPuBwgQIECAQEDAoAdKFIEAAQIECBh0P0CAAAECBAICBj1QoggECBAgQMCg+wECBAgQIBAQMOiBEkUgQIAAAQIG3Q8QIECAAIGAgEEPlCgCAQIECBAw6H6AAAECBAgEBAx6oEQRCBAgQICAQfcDBAgQIEAgIGDQAyWKQIAAAQIEDLofIECAAAECAQGDHihRBAIECBAgYND9AAECBAgQCAgY9ECJIhAgQIAAAYPuBwgQIECAQEDAoAdKFIEAAQIECBh0P0CAAAECBAICBj1QoggECBAgQMCg+wECBAgQIBAQMOiBEkUgQIAAAQIG3Q8QIECAAIGAgEEPlCgCAQIECBAw6H6AAAECBAgEBAx6oEQRCBAgQICAQfcDBAgQIEAgIGDQAyWKQIAAAQIEDLofIECAAAECAQGDHihRBAIECBAgYND9AAECBAgQCAgY9ECJIhAgQIAAAYPuBwgQIECAQEDAoAdKFIEAAQIECBh0P0CAAAECBAICBj1QoggECBAgQMCg+wECBAgQIBAQMOiBEkUgQIAAAQIG3Q8QIECAAIGAgEEPlCgCAQIECBA4R7EAZWDJXlYAAAAASUVORK5CYII=`;
+                var data = signaturePad.toDataURL();
+                console.log(data);
+
+                if (data === defaultData) {
+                    var dom = $(this);
+                    console.log(dom);
+                var domId = dom.find("#currentTransaction").val();
+
+                    console.log(domId);
+
+
+                var opt = {
+                    url: "/Home/ClearTransactionSignature",
+                    method: "POST",
+                    data: { Id: domId },
+                    success: function (data) {
+                        if (data.success) {
+                            renderExistingCoordinatesForUpdate();
+                                 var modal = $("#signatureModal");
+
+                                modal.modal("hide");
+                        }
+                    }
+                }
+
+                $.ajax(opt);
+                } else {
+
+
+                }
+
+
+
+
+
+
+            });
+            $("#postSignature").on("click", function (evt) {
+
+                evt.preventDefault();
+
+                var transactionid = $(this).data("transactionid");
+                var opt = {
+                    url: "/Home/UpdateSignatoryStatus",
+                    method: "POST",
+                    data: { Id: transactionid },
+                    success: function (data) {
+                        if (data.success) {
+                            pageRendering = false;
+                            loadingAdded();
+                            location.reload();
+                        }
+
+                    }, error: function () {
+
+
+                    }
+
+                };
+                  pageRendering = true;
+                 loadingAdded();
+                $.ajax(opt);
+
+
+
+            });
+                   $(".viewSupportFile").on("click", function (evt) {
+
+                evt.preventDefault();
+                var dom = $(this);
+                var url = dom.attr('href');
+                window.open(url, 'window name', 'window settings');
+         
+            })
+            $("#loadingModal").on('shown.bs.modal', function () {
+                
+                loadingAdded();
+            });
+
+            var canvas = $('#the-canvas').get(0);
+            var pageNumDom = $("#page_num");
+            var ctx = canvas.getContext('2d');
+
+            function queueRenderPage(num) {
+                if (pageRendering) {
+                    pageNumPending = num;
+                } else {
+                    renderPage(num);
+            
+                }
+            }
+            $("#prev").on("click", function() {
+                if (pageNum <= 1) {
+                    return;
+                }
+                pageNum--;
+                queueRenderPage(pageNum);
+            })
+            $("#next").on("click", function (){
+                if (pageNum >= pdfDoc.numPages) {
+                    return;
+                }
+                pageNum++;
+                queueRenderPage(pageNum);
+            });
+            function renderExistingCoordinatesForUpdate() {
+                  var deferred = $.Deferred();
+
+
+                var pageNumber = $("#page_num");
+                var documentId = $("#documentId");
+                var signatoryId = $("#selectedSignatoryId");
+                var cover = $("#canvasCover");
+              
+
+                cover.children().each(function () {
+                    var childdom = $(this);
+                    childdom.remove()
+                });
+
+
+                var opt = {
+                    url: "/Home/GetExistingelementCoordinatesForUpdate",
+                    dataType: "HTML",
+                    data: { DocumentId: documentId.val(), PageNumber: pageNumber.text(), SignatoryId: signatoryId.val() },
+                    success: function (data) {
+
+                        console.log(data.trim().length);
+
+                        if (data.trim().length !== 0) {
+                            cover.append(data);
+                            
+                              $(".mainSignatureContainer").draggable({containment: "#canvasCover"});
+                                if (cover.children().length > 0) {
+
+                                        var coverChildren = cover.children();
+                                         coverChildren.each(function () {
+                                                var currentDom = $(this);
+
+                                                 var form = currentDom.find("form");
+                                                 var pageXform = form.find(".elemPageX");
+                                                 var pageYform = form.find(".elemPageY");
+
+
+                                                    pdfDoc.getPage(parseFloat(pageNumber.text())).then(function (page) {
+                                                      var viewport = page.getViewport({ scale: scale });
+                                                      var pts =  viewport.convertToViewportPoint(pageXform.val(), pageYform.val());
+                                                      currentDom.css("left", pts[0]);
+                                                      currentDom.css("top", pts[1]);
+                                                    });
+
+                                            })
+                           
+                                }
+                        }
+                       
+
+
+
+                    
+            
+                   deferred.resolve("yay");
+
+                    }, error: function () {
+
+
+                        deferred.reject('boo');
+
+
+                    }
+                }
+              
+                $.ajax(opt);
+           
+                 return deferred.promise();
+            }
+            function loadingAdded() {
+
+            
+                if (pageRendering) {
+                    loadingmodal.modal({
+                        backdrop: 'static',
+                        keyboard: false
+                    });
+     
+                  
+                } else {                  
+
+                    loadingmodal.modal("toggle");
+                }
+         
+            }
+            function renderPage(num) {
+
+
+               var cover = $("#canvasCover");
+
+                cover.children().each(function () {
+                    var childdom = $(this);
+                    childdom.remove()
+                });
+                pageRendering = true;
+
+                loadingAdded();
+
+
+                pdfDoc.getPage(num).then(function (page) {
+                    var viewport = page.getViewport({ scale: scale });
+
+                 
+
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+
+
+                    var renderContext = {
+                        canvasContext: ctx,
+                        viewport: viewport
+                    };
+                    var renderTask = page.render(renderContext);
+
+
+                    renderTask.promise.then(function () {
+                         pageRendering = false;
+                     
+                        
+
+                        if (pageNumPending !== null) {
+
+                            renderPage(pageNumPending);
+                         
+                            pageNumPending = null;
+
+                            console.log("page num != null")
+
+                        }
+
+
+                       var canvasCoverDomForRevision = $("#canvasCover");
+                        canvasCoverDomForRevision.width(viewport.width).height(viewport.height);
+                        $("body").height(viewport.height + canvasCoverDomForRevision.offset().top);
+                        console.log("update done")
+                      
+
+                        renderExistingCoordinatesForUpdate().then(function (ss) {
+
+                            console.log(ss);
+                             loadingAdded();
+
+                        });;
+
+
+              
+                       
+                    });
+
+
+
+
+                })
+
+
+
+                pageNumDom.text(num);
+            }
+            $("#canvasCover").on("click", ".forupdateSignatureCover", function (evt) {
+
+                 evt.stopPropagation();
+            })
+            $("#canvasCover").on("mouseup", ".mainSignatureContainer", function (evt) {
+                evt.stopPropagation();
+                var dom = $(this);
+                var pageX =(parseFloat(dom.css("left"),10) < 0 ) ? 0 : parseFloat(dom.css("left"),10);
+                var pageY = (parseFloat(dom.css("top"),10) < 0 ) ? 0 : parseFloat(dom.css("top")+25,10);
+                console.log(pageX);
+                console.log(pageY);
+                var num = parseInt(pageNumDom.text());
+
+                pdfDoc.getPage(num).then(function (page) {
+
+                    var viewport = page.getViewport({ scale: scale });
+
+                    var point = viewport.convertToPdfPoint(pageX, pageY);
+
+                    console.log(point);
+                    var form = dom.find("form");
+                    var pageXform = form.find(".elemPageX");
+                    var pageYform = form.find(".elemPageY");
+
+                    pageXform.val(point[0])
+                    pageYform.val(point[1])
+
+
+
+                    var opt = {
+                        url: "/Home/UpdateCoordinates",
+                        method: "POST",
+                        data: form.serialize(),
+                        success: function () {
+                            console.log("Update Success");
+
+                        }
+                    }
+
+                    $.ajax(opt);
+
+
+                });
+
+            })
+            $("#canvasCover").on("click",".mainSignatureHeader .deleteSignatureSpan", function (evt) {
+
+                evt.stopPropagation();
+                var dom = $(this);
+                var domId = dom.data("transactionid");
+                console.log(domId);
+
+
+                var opt = {
+                    url: "/Home/ClearTransactionSignature",
+                    method: "POST",
+                    data: { Id: domId },
+                    success: function (data) {
+                        if (data.success) {
+                            renderExistingCoordinatesForUpdate();
+                                 var modal = $("#signatureModal");
+
+                                modal.modal("hide");
+                        }
+                    }
+                }
+
+                $.ajax(opt);
+
+            });
+            $("#canvasCover").on("click",".mainSignatureHeader", function (evt) {
+
+                evt.stopPropagation();
+
+            });
+            $("#canvasCover").on("click", function (evt) {
+
+
+                                var pageNumber = $("#page_num");
+                                var documentId = $("#documentId");
+                                var signatoryId = $("#selectedSignatoryId");
+                                var dom = $(this);
+                                var domOffset = dom.offset();
+                                var currentPageX = evt.pageX;
+                                var currentPageY = evt.pageY;
+                               var currentComputedPageX = currentPageX - domOffset.left;
+                               var currentComputedPageY = currentPageY - domOffset.top;
+                               var currentComputedPdfPointX = 0;
+                               var currentComputedPdfPointY = 0;
+
+
+                               var num = parseInt(pageNumber.text());
+
+                               pdfDoc.getPage(num).then(function (page) {
+                                   var viewport = page.getViewport({ scale: scale });
+                                   var pdfPoint = viewport.convertToPdfPoint(currentComputedPageX,currentComputedPageY)
+                                   currentComputedPdfPointX = pdfPoint[0];
+                                   currentComputedPdfPointY = pdfPoint[1];
+
+                                    var opt = {
+                                    url: "/Home/AddSignatureElement",
+                                    method: "POST",
+                                    dataType: "HTML",
+                                    data: { SignatoryId:signatoryId.val(), DocumentId:documentId.val(), PageNumber:pageNumber.text(),pageX:currentComputedPdfPointX, pageY: currentComputedPdfPointY },
+                                    success: function (data) {
+
+
+                                        var parseData = $.parseJSON( data );
+                                        var currentDomId = parseData.id;
+                                         var currentTransDom = $("#currentTransaction");
+                                         currentTransDom.val(currentDomId);
+                                         var modal = $("#signatureModal");
+                                         modal.modal("show");
+
+
+                                    }
+                                }
+
+                                $.ajax(opt);
+
+                                });
+
+
+            })
+            $("#saveSignature").on("click", function () {
+                var currentTransactionDom = $("#currentTransaction");
+                var base64string = signaturePad.toDataURL();
+                var dataurldom = $("#dataUrlString");
+                var modalSigForm = $("#modalSignatureForm");
+                var modal = $("#signatureModal");
+                var pageNumber = $("#page_num");
+                var num = parseInt(pageNumber.text());
+
+                dataurldom.val(base64string);
+
+                if (!fromSignatureHistory) {
+                        addNewSignatureToHistory(base64string);
+                }
+
+
+
+            
+                console.log(currentTransactionDom.val());
+                var opt = {
+                    url: "/Home/UpdateGatheredSignature",
+                    method: "POST",
+                    data: modalSigForm.serialize(),
+                    success: function (data) {
+                        if (data) {
+                            modal.modal("hide");
+                            var cover = $("#canvasCover");
+                            cover.append(data);
+
+
+
+                            var currentId = $(data).find("form").find(".elemId").val().trim();
+                            var pageX = $(data).find("form").find(".elemPageX");
+                            var pageY = $(data).find("form").find(".elemPageY");
+                            var currentSelectedDom = $("input[value='" + currentId + "'].elemId");
+                            var currentSelectedDomParent = currentSelectedDom.parent().parent().parent().parent();
+
+                            pdfDoc.getPage(num).then(function (page) {
+                                var viewport = page.getViewport({ scale: scale });
+                                var viewPortPoint = viewport.convertToViewportPoint(pageX.val(), pageY.val());
+                                currentSelectedDomParent.css("left", viewPortPoint[0]);
+                                currentSelectedDomParent.css("top", viewPortPoint[1] - 25);
+                            });
+
+                            currentSelectedDomParent.draggable({containment: "#canvasCover"});
+
+
+
+                        }
+                    }, error: function () {
+
+                            alert("somethings goes wrong");
+
+                    }
+                }
+                fromSignatureHistory = false;
+                $.ajax(opt)
+            })
+
+
+
+            pdfjsLib.getDocument(url).promise.then(function (pdfDoc_) {
+                pdfDoc = pdfDoc_;
+                document.getElementById('page_count').textContent = pdfDoc.numPages;
+
+                // Initial/first page rendering
+                renderPage(pageNum);
+            });
+
+        });
+    </script>
+
+
+
+
+
+}

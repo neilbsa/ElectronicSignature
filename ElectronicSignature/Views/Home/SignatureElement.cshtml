@@ -1,0 +1,21 @@
+﻿@model DocumentElementCoordinates
+
+@{
+    Layout = null;
+}
+
+
+
+<div class="signatureElement systemElement" style="width:250px; height:50px;background-color:yellow;color:red">
+    <h2 class="visibleSign">Sign Here</h2>
+    <form asp-action="SaveCoordinate" method="post">
+        <input class="elemId" type="hidden" asp-for="Id" />
+        <input class="elemType" type="hidden" asp-for="ElementType" />
+        <input class="elemSignatoryId" type="hidden" asp-for="SignatoryId" />
+        <input class="elemPageX" type="hidden" asp-for="PageX" />
+        <input class="elemPageY" type="hidden" asp-for="PageY" />
+        <input class="elemPageNumber" type="hidden" asp-for="PageNumber" />
+    </form>
+</div>
+
+

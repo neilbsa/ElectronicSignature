@@ -1,0 +1,42 @@
+﻿@model Signatories
+
+@{
+
+    Layout = null;
+
+}
+
+    <tr>
+        @using (Html.BeginCollectionItem("AssignedSignatories"))
+        {
+
+            <td>
+
+                <div class="form-group">
+                
+                    <input asp-for="OrderNumber" class="form-control orderNumberItem" disabled />
+                    <span asp-validation-for="OrderNumber" class="text-danger"></span>
+                </div>
+            </td>
+            <td>
+
+                <div class="form-group">
+               
+                    <input asp-for="EmailAddress" class="form-control" />
+                    <span asp-validation-for="EmailAddress" class="text-danger"></span>
+                </div>
+            </td>
+            <td>
+                <div class="form-group">
+              
+                    <input asp-for="Name" class="form-control" />
+                    <span asp-validation-for="Name" class="text-danger"></span>
+                </div>
+            </td>
+            <td>
+                <button type="button"   class="deleteSignatory btn btn-danger">Remove</button>
+            </td>
+
+
+        }
+    </tr>

@@ -1,0 +1,122 @@
+﻿@model List<Document>
+
+
+
+@{
+    Layout = null;
+
+}
+
+
+
+
+@if (Model != null && Model.Count() > 0)
+{
+
+    foreach (var item in Model)
+    {
+        <div class="itemListItem shadow p-3 mb-5 bg-white rounded">
+            <div class="row">
+
+
+                <div class="col-xs-1 col-sm-1 col-md-1 col-lg-1">
+            
+                    <input type="checkbox" /> 
+                </div>
+                <div class="col-xs-8 col-sm-8 col-md-8 col-lg-8">
+                    <a asp-action="UpdateSignatures" asp-route-Id="@item.Id">@item.Filename</a>
+                    @*<a asp-action="UpdateSignatures" asp-route-Id="@item.Id">Update Signature</a>*@
+                </div>
+                <div class="col-xs-3 col-sm-3 col-md-3 col-lg-3">
+                    <div class="dropdown">
+                        <button class="btn btn-secondary dropdown-toggle" type="button" id="dropdownMenuButton" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                            Action
+                        </button>
+                        <div class="dropdown-menu" aria-labelledby="dropdownMenuButton">
+                            @if (item.Status.Contains("Waiting"))
+                            {
+
+                                if (item.CreateUser == ViewBag.currentUser)
+                                {
+                                    <a class="sendEmailRequest dropdown-item" data-transactionid="@item.Id">Resend Request</a>
+
+                                    <a class="dropdown-item addNewSignatoriesBtn" data-transactionid="@item.Id">Add New Signatories</a>
+                                }
+                            }
+
+                            @if (item.Status.Contains("Signed"))
+                            {
+
+
+                                <a asp-action="Details" class="dropdown-item" asp-route-Id="@item.Id">Details</a>
+                                <a asp-action="ExtractReport" asp-route-Id="@item.Id" class="dropdown-item extractReportBtn">Extract Report</a>
+
+                            }
+
+                            @if (item.AssignedSignatories.Any(x => x.EmailAddress == ViewBag.currentUser && x.Status == "Pending"))
+                            {
+                                <a asp-action="UpdateSignatures" class="dropdown-item" asp-route-Id="@item.Id">Update Signature</a>
+                            }
+
+                            <a class="dropdown-item moveToFolderBtn" data-id="@item.Id">Move To Folder</a>
+                            <a class="dropdown-item deleteFile" data-id="@item.Id">Delete</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-xs-1 col-sm-1 col-md-1 col-lg-1">
+
+                </div>
+
+                @if (item.Status.Contains("Waiting"))
+                {
+                    <div class="itemListStatusContainer  col-xs-3 col-sm-3 col-md-3 col-lg-3">
+                        <span class="itemListStatus itemListStatusGray">@item.Status</span>
+                    </div>
+                }
+                else if (item.Status == "Signed")
+                {
+                    <div class="itemListStatusContainer  col-xs-3 col-sm-3 col-md-3 col-lg-3">
+                        <span class="itemListStatus itemListStatusGreen">@item.Status</span>
+                    </div>
+                }
+                else
+                {
+                    <div class="itemListStatusContainer  col-xs-3 col-sm-3 col-md-3 col-lg-3">
+                        <span class="itemListStatus">@item.Status</span>
+                    </div>
+                }
+
+
+            </div>
+            <div class="row">
+                <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12 signatoryList">
+
+                    @if (item.AssignedSignatories != null && item.AssignedSignatories.Count() > 0)
+                    {
+                        @String.Join("; ", @item.AssignedSignatories.Select(x => x.EmailAddress).ToArray())
+                    }
+
+                </div>
+            </div>
+
+        </div>
+    }
+}
+else
+{
+    <div class="itemListItem shadow p-3 mb-5 bg-white rounded">
+        <div class="row">
+
+
+            <div class="col-xs-12 col-sm-12 col-md-12 col-lg-12">
+                <h2>No Record Found</h2>
+            </div>
+
+
+        </div>
+
+
+    </div>
+}

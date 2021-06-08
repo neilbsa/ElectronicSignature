@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "defaultProvider": "cdnjs",
+  "libraries": [
+    {
+      "library": "jqueryui@1.12.1",
+      "destination": "wwwroot/lib/jquery-ui/"
+    },
+    {
+      "library": "signature_pad@1.5.3",
+      "destination": "wwwroot/lib/signaturepad/"
+    },
+    {
+      "library": "pdf.js@2.4.456",
+      "destination": "wwwroot/lib/pdfjs/"
+    }
+  ]
+}
